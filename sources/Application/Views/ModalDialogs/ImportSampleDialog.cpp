@@ -31,22 +31,27 @@ ImportSampleDialog::ImportSampleDialog(View &view):ModalView(view) {
 
 ImportSampleDialog::~ImportSampleDialog() {
   sampleList_.Empty();
+  printf("IMportDialog destruct called");
 }
 
 void ImportSampleDialog::DrawView() {
-
+	printf("IMportDialog drawView");
 	SetWindow(LIST_WIDTH,LIST_SIZE+3) ;
 
 	GUITextProperties props ;
 
 // Draw title
 
-//	char title[40] ;
+#ifdef SHOW_MEM_USAGE
+	char title[40] ;
 
 	SetColor(CD_NORMAL) ;
 
-//	sprintf(title,"Sample Import from %s",currentPath_.GetName()) ;
-//	w_.DrawString(title,pos,props) ;
+	sprintf(title,"MEM [%d]", System::GetInstance()->GetMemoryUsage()) ;
+	GUIPoint pos = GUIPoint(0, 0);
+	w_.DrawString(title, pos, props);
+
+#endif
 
 // Draw samples
 
@@ -82,12 +87,6 @@ void ImportSampleDialog::DrawView() {
 				strcpy(buffer+1,p.c_str()) ;
 				strcat(buffer,"]") ;
 			}
-		#ifdef PICO_BUILD 
-			// temporary UI to show temporary dir file count limit reached
-            if (count == (PICO_MAX_FILE_COUNT + 1)) {
-                strcpy(buffer, "[*MAX FILES LIMIT*]");
-            }
-		#endif
 			buffer[LIST_WIDTH-1]=0 ;
 			DrawString(x,y,buffer,props) ;
 			y+=1 ;

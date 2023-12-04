@@ -50,6 +50,9 @@ public:
 	bool Clipped() ;
 	void SetMasterVolume(int) ;
 	int GetPlayedBufferPercentage() ;
+
+	int GetAudioPeakL();
+	int GetAudioPeakR();
 	
 	virtual void Execute(FourCC id,float value) ;
 

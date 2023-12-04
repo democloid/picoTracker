@@ -108,6 +108,7 @@ public:
 	virtual void SetColor(ColorDefinition cd) ;
 	virtual void ClearRect(int x,int y,int w,int h) ;
 	virtual void DrawString(int x,int y,const char *txt,GUITextProperties &props) ;
+	virtual void DrawChar(int x,int y,const char c,GUITextProperties &props) ;
 
 	void DoModal(ModalView *view,ModalViewCallback cb=0) ;
 
@@ -134,6 +135,9 @@ protected:
 
     void drawMap() ;
     void drawNotes() ;
+
+	void drawMasterVuMeter(Player *player, GUIPoint pos, GUITextProperties props);
+
 public: // temp hack for modl windo constructors
 	GUIWindow &w_ ;
 	ViewData *viewData_ ;

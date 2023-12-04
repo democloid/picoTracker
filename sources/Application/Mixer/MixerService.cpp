@@ -168,6 +168,14 @@ bool MixerService::Clipped() {
      return out_->Clipped() ;
 } ;
 
+int MixerService::GetAudioPeakL() {
+    return out_->GetLastPeakL() ;
+} ;
+
+int MixerService::GetAudioPeakR() {
+    return out_->GetLastPeakR() ;
+} ;
+
 void MixerService::SetMasterVolume(int vol) {
   fixed masterVolume = fp_mul(i2fp(vol),fl2fp(0.01f));
   

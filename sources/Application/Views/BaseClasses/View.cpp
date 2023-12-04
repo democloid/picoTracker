@@ -76,7 +76,7 @@ void View::drawMap() {
     DrawString(pos._x,pos._y,buffer,props) ;
 		pos._y++ ;		
 		//row3
-		sprintf(buffer,"  TT");
+		sprintf(buffer,"M TT");
     DrawString(pos._x,pos._y,buffer,props) ;
     
 		//draw current screen on map
@@ -116,6 +116,10 @@ void View::drawMap() {
 			pos._x+=2;
       DrawString(pos._x,pos._y,"G",props) ;
 			break;
+		case VT_MIXER:
+			pos._y+=2;
+      DrawString(pos._x,pos._y,"M",props) ;
+			break;	
 		default: //VT_SONG
 			pos._y+=1;
       DrawString(pos._x,pos._y,"S",props) ;
@@ -222,3 +226,32 @@ void View::DrawString(int x,int y,const char *txt,GUITextProperties &props) {
 	w_.DrawString(txt,pos,props) ;
 } ;
 
+void View::DrawChar(int x,int y,const char c,GUITextProperties &props) {
+	GUIPoint pos(x,y) ;
+	w_.DrawChar(c, pos, props) ;
+} ;
+
+
+void View::drawMasterVuMeter(Player *player, GUIPoint pos, GUITextProperties props) {
+	pos = GetAnchor();
+	pos._x += 24;
+	pos._y += 15;
+	auto playerLevels = player->GetLevels();
+	short lBars = playerLevels->Left / 1024;
+	short rBars = playerLevels->Right / 1024;
+
+	for (int i = 0; i < 16; i++) {
+		if (lBars > i) {
+			DrawString(pos._x, pos._y, "=" , props) ;
+		} else {
+			DrawString(pos._x, pos._y, " " , props) ;
+		}
+		if (rBars > i) {
+			DrawString(pos._x+1, pos._y, "=" , props) ;
+		} else {
+			DrawString(pos._x+1, pos._y, " " , props) ;
+		}
+		pos._y -= 1;
+	}
+	delete playerLevels;
+}
