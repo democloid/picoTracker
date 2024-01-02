@@ -175,6 +175,11 @@ void InstrumentView::fillSampleParameters() {
   T_SimpleList<UIField>::Insert(f1);
 
   position._y += 1;
+  v = instrument->FindVariable(SIP_SLICES);
+  f1 = new UIIntVarField(position, *v, "slices: %d", 1, 128, 1, 16);
+  T_SimpleList<UIField>::Insert(f1);
+
+  position._y += 1;
   v = instrument->FindVariable(SIP_START);
   f1 = new UIBigHexVarField(position, *v, 7, "start: %7.7X", 0,
                             instrument->GetSampleSize() - 1, 16);
