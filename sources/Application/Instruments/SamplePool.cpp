@@ -1,6 +1,8 @@
 #include "SamplePool.h"
+#include "Adapters/picoTracker/utils/stringutils.h"
 #include "Application/Model/Config.h"
 #include "Application/Persistency/PersistencyService.h"
+#include "Externals/etl/include/etl/string.h"
 #include "System/Console/Trace.h"
 #include "System/io/Status.h"
 #include <stdlib.h>
@@ -174,7 +176,13 @@ int SamplePool::ImportSample(Path &path) {
   dpath += path.GetName();
   Path dstPath(dpath.c_str());
 
-  Status::Set("Loading %s", path.GetName().c_str());
+  // truncate long file names
+  auto fileNameDisplay = etl::string<80>();
+  fileNameDisplay.append(path.GetName().length() > 12
+                             ? path.GetName().substr(0, 12).c_str()
+                             : path.GetName().c_str());
+
+  Status::Set("Loading %s", fileNameDisplay);
 
   // Opens files
 
@@ -196,13 +204,16 @@ int SamplePool::ImportSample(Path &path) {
   };
 
   // copy file to current project
-
   char buffer[IMPORT_CHUNK_SIZE];
+  int fileSize = size;
+  char progressbuffer[10];
   while (size > 0) {
     int count = (size > IMPORT_CHUNK_SIZE) ? IMPORT_CHUNK_SIZE : size;
     fin->Read(buffer, 1, count);
     fout->Write(buffer, 1, count);
     size -= count;
+    printProgress(((fileSize - size) / (float)fileSize), progressbuffer, false);
+    Status::Set("Copying:%s %s", fileNameDisplay.data(), progressbuffer);
   };
 
   fin->Close();
@@ -210,8 +221,8 @@ int SamplePool::ImportSample(Path &path) {
   delete (fin);
   delete (fout);
 
+  Status::Set("Loading to Flash:%s", fileNameDisplay.data());
   // now load the sample
-
   bool status = loadSample(dstPath.GetPath().c_str());
 
   SetChanged();
