@@ -136,6 +136,8 @@ protected:
 
   void drawBattery(float voltage, GUIPoint &pos, GUITextProperties &props);
 
+  void drawMasterVuMeter(Player *player, GUIPoint pos, GUITextProperties props);
+
 public: // temp hack for modl windo constructors
   GUIWindow &w_;
   ViewData *viewData_;
@@ -152,6 +154,7 @@ private:
   static bool initPrivate_;
   ModalView *modalView_;
   ModalViewCallback modalViewCallback_;
+  void setVUMeterColor_(int level);
 
 public:
   static int margin_;
