@@ -2,6 +2,8 @@
 #include "Application/Model/Scale.h"
 #include "Application/Persistency/PersistencyService.h"
 #include "Application/Views/ModalDialogs/MessageBox.h"
+#include "Application/Views/ModalDialogs/NewProjectDialog.h"
+#include "Application/Views/ModalDialogs/SelectProjectDialog.h"
 #include "BaseClasses/UIActionField.h"
 #include "BaseClasses/UIIntVarField.h"
 #include "BaseClasses/UITempoField.h"
@@ -14,10 +16,89 @@
 
 #define ACTION_PURGE MAKE_FOURCC('P', 'U', 'R', 'G')
 #define ACTION_SAVE MAKE_FOURCC('S', 'A', 'V', 'E')
+#define ACTION_SAVE_AS MAKE_FOURCC('S', 'V', 'A', 'S')
 #define ACTION_LOAD MAKE_FOURCC('L', 'O', 'A', 'D')
 #define ACTION_BOOTSEL MAKE_FOURCC('B', 'O', 'O', 'T')
 #define ACTION_PURGE_INSTRUMENT MAKE_FOURCC('P', 'R', 'G', 'I')
 #define ACTION_TEMPO_CHANGED MAKE_FOURCC('T', 'E', 'M', 'P')
+
+void ProjectView::Toast(const char *text) {
+  MessageBox *mb = new MessageBox(*this, text, MBBF_OK);
+  DoModal(mb);
+}
+
+static void SaveAsProjectCallback(View &v, ModalView &dialog) {
+  FileSystemService FSS;
+  NewProjectDialog &npd = (NewProjectDialog &)dialog;
+  Trace::Log("ProjectView", "Dialog result: %d", dialog.GetReturnCode());
+
+  if (dialog.GetReturnCode() > 0) {
+    std::string strDestProject;
+    std::string strDestSamples;
+
+    Path root("root:");
+    strDestProject = root.GetName() + npd.GetName();
+    strDestSamples = strDestProject + "/samples/";
+
+    Path pathDestProject = Path(strDestProject);
+    Path pathDestSamples = Path(strDestSamples);
+    Path pathSourceProject("project:");
+    Path pathSourceSamples("project:samples");
+
+    Path pathSourceSave = pathSourceProject.GetPath() + "lgptsav.dat";
+    Path pathDestSav = pathDestProject.GetPath() + "/lgptsav.dat";
+    if (pathDestProject.Exists()) {
+      const char *errMsg =
+          ("Project '" + pathDestProject.GetPath() + "' already exists")
+              .c_str();
+      Trace::Log("ProjectView", errMsg);
+    } else {
+      Result result =
+          FileSystem::GetInstance()->MakeDir(pathDestProject.GetPath().c_str());
+      if (result.Failed()) {
+        const char *errMsg =
+            ("Failed to create dir '" + pathDestProject.GetPath() + "'")
+                .c_str();
+        Trace::Log("ProjectView", errMsg);
+        return;
+      };
+      result =
+          FileSystem::GetInstance()->MakeDir(pathDestSamples.GetPath().c_str());
+      if (result.Failed()) {
+        const char *errMsg =
+            ("Failed to create sample dir '" + pathDestProject.GetPath() + "'")
+                .c_str();
+        Trace::Log("ProjectView", errMsg);
+        return;
+      };
+
+      FSS.Copy(pathSourceSave, pathDestSav);
+
+      I_Dir *fileList =
+          FileSystem::GetInstance()->Open(pathSourceSamples.GetPath().c_str());
+      if (fileList) {
+        fileList->GetContent("*");
+        for (fileList->Begin(); !fileList->IsDone(); fileList->Next()) {
+          Path &current = fileList->CurrentItem();
+          if (current.IsFile()) {
+            Path dstfile = Path((strDestSamples + current.GetName()).c_str());
+            Path srcfile = Path(current.GetPath());
+            FSS.Copy(srcfile.GetPath(), dstfile.GetPath());
+            Trace::Log("ProjectView", "OK copy %s", srcfile.GetPath().c_str());
+          }
+        }
+      }
+      if (dialog.GetReturnCode() == 1) {
+#ifdef PICOBUILD
+        // TODO: Remove this hack. Due to memory leaks and other problems
+        // instead of going back, we perform a software reset
+        watchdog_reboot(0, 0, 0);
+#endif
+        ((ProjectView &)v).OnSaveAsProject((char *)strDestProject.c_str());
+      }
+    }
+  }
+}
 
 static void LoadCallback(View &v, ModalView &dialog) {
   if (dialog.GetReturnCode() == MBL_YES) {
@@ -102,11 +183,16 @@ ProjectView::ProjectView(GUIWindow &w, ViewData *data) : FieldView(w, data) {
   a1->AddObserver(*this);
   fieldList_.insert(fieldList_.end(), a1);
 
+  position._y += 1;
+  a1 = new UIActionField("Save Song As", ACTION_SAVE_AS, position);
+  a1->AddObserver(*this);
+  fieldList_.insert(fieldList_.end(), a1);
+
   v = project_->FindVariable(VAR_MIDIDEVICE);
   NAssert(v);
   position._y += 2;
   UIIntVarField *f4 = new UIIntVarField(
-      position, *v, "midi: %s", 0, MidiService::GetInstance()->Size(), 1, 1);
+      position, *v, "MIDI: %s", 0, MidiService::GetInstance()->Size(), 1, 1);
   fieldList_.insert(fieldList_.end(), f4);
 
   position._y += 2;
@@ -189,7 +275,7 @@ void ProjectView::Update(Observable &, I_ObservableData *data) {
     DoModal(mb, PurgeCallback);
     break;
   }
-  case ACTION_SAVE:
+  case ACTION_SAVE: {
     if (!player->IsRunning()) {
       PersistencyService *service = PersistencyService::GetInstance();
       service->Save();
@@ -198,11 +284,25 @@ void ProjectView::Update(Observable &, I_ObservableData *data) {
       DoModal(mb);
     }
     break;
+  }
   case ACTION_LOAD: {
     if (!player->IsRunning()) {
       MessageBox *mb = new MessageBox(*this, "Load song and lose changes?",
                                       MBBF_YES | MBBF_NO);
       DoModal(mb, LoadCallback);
+    } else {
+      MessageBox *mb = new MessageBox(*this, "Not while playing", MBBF_OK);
+      DoModal(mb);
+    }
+    break;
+  }
+  case ACTION_SAVE_AS: {
+    Toast("enter case");
+    if (!player->IsRunning()) {
+      PersistencyService *service = PersistencyService::GetInstance();
+      service->Save();
+      NewProjectDialog *mb = new NewProjectDialog(*this);
+      DoModal(mb, SaveAsProjectCallback);
     } else {
       MessageBox *mb = new MessageBox(*this, "Not while playing", MBBF_OK);
       DoModal(mb);
@@ -222,7 +322,6 @@ void ProjectView::Update(Observable &, I_ObservableData *data) {
     break;
   }
 #endif
-
   case ACTION_TEMPO_CHANGED:
     break;
   default:
@@ -239,6 +338,12 @@ void ProjectView::OnPurgeInstruments(bool removeFromDisk) {
 
 void ProjectView::OnLoadProject() {
   ViewEvent ve(VET_QUIT_PROJECT);
+  SetChanged();
+  NotifyObservers(&ve);
+};
+
+void ProjectView::OnSaveAsProject(char *data) {
+  ViewEvent ve(VET_SAVEAS_PROJECT, data);
   SetChanged();
   NotifyObservers(&ve);
 };
