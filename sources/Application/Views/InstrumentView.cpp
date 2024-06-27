@@ -161,6 +161,14 @@ void InstrumentView::fillSampleParameters() {
                             1);
   fieldList_.insert(fieldList_.end(), &(*intVarField_.rbegin()));
 
+  if (v->GetString() == "slicer") {
+    position._x += 18;
+    v = instrument->FindVariable(SIP_SLICES);
+    intVarField_.emplace_back(position, *v, "slcs: %d", 1, 128, 1, 16);
+    fieldList_.insert(fieldList_.end(), &(*intVarField_.rbegin()));
+    position._x -= 18;
+  }
+
   position._y += 1;
   v = instrument->FindVariable(SIP_START);
   bigHexVarField_.emplace_back(position, *v, 7, "start: %7.7X", 0,
@@ -322,6 +330,13 @@ void InstrumentView::ProcessButtonMask(unsigned short mask, bool pressed) {
 
   FieldView::ProcessButtonMask(mask);
 
+  // A Modifier
+  if (mask & EPBM_A) {
+    FourCC varID = ((UIIntVarField *)GetFocus())->GetVariableID();
+    if (varID == SIP_LOOPMODE) { // Show or hide slices
+      onInstrumentChange();
+    }
+  }
   // B Modifier
 
   if (mask & EPBM_B) {
